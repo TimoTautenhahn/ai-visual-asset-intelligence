@@ -3,7 +3,6 @@ import {
   getAssets,
   getFacets,
   getConfig,
-  getSimilar,
   retryAssetAi,
   addToCollection,
   getCollections,

@@ -51,8 +51,8 @@ export async function startImport(importId: string): Promise<void> {
 
     while (queue.length > 0) {
       const current = queue.shift()!;
-      if (job.status === 'cancelled') break;
 
+      // Authoritative cancellation check against the database.
       const next = await prisma.importJob.findUnique({ where: { id: importId } });
       if (next?.status === 'cancelled') break;
 

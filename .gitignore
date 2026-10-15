@@ -14,3 +14,6 @@ build/
 credentials.json
 rclone.conf
 .token*
+*.tsbuildinfo
+*.sqlite
+prisma/*.sqlite

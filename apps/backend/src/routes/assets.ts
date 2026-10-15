@@ -42,7 +42,7 @@ export default async function assetsRoutes(app: FastifyInstance) {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || '24', 10)));
     const skip = (page - 1) * limit;
 
-    type Where = Parameters<typeof prisma.asset.findMany>[0]['where'];
+    type Where = NonNullable<NonNullable<Parameters<typeof prisma.asset.findMany>[0]>['where']>;
     const and: Where[] = [];
 
     if (query) {

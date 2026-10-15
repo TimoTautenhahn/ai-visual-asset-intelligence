@@ -51,7 +51,7 @@ export default function AssetDetail({ assetId, onClose, onSelectAsset, onAddToCo
           )}
           {tags && (
             <div style={{ marginTop: '0.5rem' }}>
-              {tags.scene && <span className="chip">Szene: {String(tags.scene)}</span>}
+              {tags.scene ? <span className="chip">Szene: {String(tags.scene)}</span> : null}
               {Array.isArray(tags.room_type) && tags.room_type.map((r: string) => <span key={r} className="chip">{r}</span>)}
               {Array.isArray(tags.style) && tags.style.map((s: string) => <span key={s} className="chip">{s}</span>)}
               {Array.isArray(tags.materials) && tags.materials.map((m: string) => <span key={m} className="chip">{m}</span>)}
