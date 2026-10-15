@@ -1,0 +1,107 @@
+// SQLite for MVP; switch to postgres by changing provider + url
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Asset {
+  id           String   @id @default(cuid())
+  source_type  String   @default("web")
+  source_url   String?
+  page_url     String?
+  original_path String
+  thumb_path   String
+  width        Int
+  height       Int
+  filesize     Int
+  sha256       String   @unique
+  status       String   @default("imported") // imported | ai_pending | ai_done | ai_error
+  created_at   DateTime @default(now())
+
+  occurrences  AssetOccurrence[]
+  ai           AssetAI?
+  collectionItems CollectionItem[]
+
+  @@index([sha256])
+  @@index([status])
+}
+
+model AssetOccurrence {
+  id        String   @id @default(cuid())
+  asset_id  String
+  page_url  String
+  asset     Asset    @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+
+  @@unique([asset_id, page_url])
+  @@index([asset_id])
+}
+
+model AssetAI {
+  id          String   @id @default(cuid())
+  asset_id    String   @unique
+  description String?
+  tags_json   String?  // JSON string of AssetAITags
+  keywords    String   @default("[]") // JSON array string
+  described_at DateTime?
+  error       String?
+  asset       Asset    @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+
+  @@index([asset_id])
+}
+
+model ImportJob {
+  id                String   @id @default(cuid())
+  start_url         String
+  status            String   @default("pending") // pending | running | completed | cancelled | failed
+  max_pages         Int      @default(200)
+  max_depth         Int      @default(4)
+  min_size          Int      @default(800)
+  pages_visited     Int      @default(0)
+  images_found     Int      @default(0)
+  images_downloaded Int     @default(0)
+  images_processed  Int     @default(0)
+  ai_described      Int     @default(0)
+  errors            Int      @default(0)
+  error_message     String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@index([status])
+}
+
+model Job {
+  id        String   @id @default(cuid())
+  type      String   // "ai_describe"
+  payload   String   // JSON
+  status    String   @default("pending") // pending | running | done | failed
+  attempts  Int      @default(0)
+  error     String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([type, status])
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  created_at  DateTime @default(now())
+  items       CollectionItem[]
+}
+
+model CollectionItem {
+  id           String     @id @default(cuid())
+  collection_id String
+  asset_id     String
+  position     Int
+  collection   Collection @relation(fields: [collection_id], references: [id], onDelete: Cascade)
+  asset        Asset      @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+
+  @@unique([collection_id, asset_id])
+  @@index([collection_id])
+}
