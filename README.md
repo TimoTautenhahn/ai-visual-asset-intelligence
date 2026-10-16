@@ -2,6 +2,8 @@
 
 Crawl a website for images, tag each one with a multimodal model, and search the resulting library by what the images actually show.
 
+![Library view: import form and empty state, with AI tagging disabled when no key is set](docs/screenshot.png)
+
 ## Why
 
 Collecting visual references across a site means opening page after page and saving images by hand, with no way to search them later by content. This pipeline crawls a start URL, downloads the images it finds, asks a vision model to describe each one (scene, room type, style, materials, colours, keywords), and stores that structured description so the library becomes searchable and filterable. The vision step is optional: without an API key the crawl, storage, and browsing still work, and tagging is simply disabled.
