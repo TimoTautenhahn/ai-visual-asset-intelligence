@@ -32,6 +32,18 @@ flowchart LR
 - **Thumbnails on ingest.** Images are resized once at download time so the UI never serves full-resolution originals, trading a little disk for a responsive grid.
 - **One vision call per image, not an agent.** Enrichment is a single structured-output request per image, not a multi-step tool-using loop. That keeps cost and latency predictable at the price of less adaptive tagging.
 
+## Evaluation
+
+`eval/` measures the tagger against a small, synthetic, labelled set. From `apps/backend`, `npm run eval:gen` writes 24 panels whose intended tags are known (no real photos, no people), and `npm run eval` runs them through the same tagging call the app uses and reports mean tag precision and coverage over room type, style, materials, and colours.
+
+```bash
+cd apps/backend
+npm run eval:gen                 # generate the labelled set under eval/dataset
+OPENAI_API_KEY=... npm run eval  # score precision and coverage
+```
+
+This needs an API key; without one it prints a message and exits. No score is published here: run it with your own key and model and judge the numbers yourself.
+
 ## Run locally
 
 ```bash
@@ -50,4 +62,4 @@ Build everything with `npm run build` (shared, then backend `tsc`, then frontend
 - Tag-overlap similarity is not semantic; adding image or text embeddings would make "similar" reflect appearance, not just shared labels.
 - The crawler respects a depth, page cap, and rate limit, but does not read `robots.txt`; point it only at sites you are allowed to crawl.
 - Enrichment quality is only as good as a single vision call; batching and a review step would raise precision.
-- No automated quality metric ships yet; a small labelled set plus tag-precision scoring would let changes to the prompt be measured.
+- The quality metric uses a synthetic labelled set; a set of real, hand-labelled images would measure production quality more faithfully.

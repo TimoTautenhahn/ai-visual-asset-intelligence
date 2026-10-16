@@ -5,22 +5,7 @@ import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { prisma } from '../db.js';
 import { getNextJob, completeJob, failJob } from '../queue.js';
-import type { AssetAITags } from '@pixfolio/shared';
-
-const SYSTEM_PROMPT = `Du bist ein Experte für Architektur und Innenarchitektur. Analysiere das Bild und antworte NUR mit einem gültigen JSON-Objekt (kein anderer Text).
-Schema:
-{
-  "scene": "interior|exterior|detail|plan|render|unknown",
-  "room_type": ["kitchen","bathroom","living","bedroom","office","staircase","facade","garden","roof","window","door","lighting","flooring","unknown"],
-  "style": ["modern","minimal","scandinavian","industrial","japandi","classic","rustic","unknown"],
-  "materials": ["wood","concrete","stone","metal","glass","plaster","brick","tile","unknown"],
-  "colors": ["beige","white","black","anthracite","grey","woodtone","green","blue","unknown"],
-  "elements": ["floor-to-ceiling windows","flat roof", ...],
-  "quality_flags": ["blurry","watermark","screenshot","collage","text_heavy","people_visible","license_risk"],
-  "description": "1–2 Sätze auf Deutsch, präzise.",
-  "keywords": ["max 12 freie Stichwörter"]
-}
-Nur die genannten Werte für scene, room_type, style, materials, colors verwenden. elements und keywords frei.`;
+import { tagImageBase64 } from '../ai/tagging.js';
 
 function getImagePath(asset: { original_path: string; thumb_path: string }): string {
   const dataDir = config.paths.dataDir;
@@ -28,17 +13,6 @@ function getImagePath(asset: { original_path: string; thumb_path: string }): str
   const origPath = path.join(dataDir, asset.original_path);
   if (fs.existsSync(thumbPath)) return thumbPath;
   return origPath;
-}
-
-function parseAiResponse(text: string): AssetAITags | null {
-  const trimmed = text.replace(/^```json\s*|\s*```$/g, '').trim();
-  try {
-    const parsed = JSON.parse(trimmed) as AssetAITags;
-    if (!parsed.description || !Array.isArray(parsed.keywords)) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
 }
 
 export async function runAiWorker(): Promise<void> {
@@ -72,48 +46,13 @@ export async function runAiWorker(): Promise<void> {
   const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: `data:${mime};base64,${base64}` },
-            },
-            {
-              type: 'text',
-              text: 'Analysiere dieses Bild und gib das JSON gemäß Schema zurück.',
-            },
-          ],
-        },
-      ],
-    });
-
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      await failJob(jobId, 'Empty response');
-      await prisma.assetAI.upsert({
-        where: { asset_id: asset.id },
-        create: { asset_id: asset.id, error: 'Empty response' },
-        update: { error: 'Empty response' },
-      });
-      await prisma.asset.update({
-        where: { id: asset.id },
-        data: { status: 'ai_error' },
-      });
-      return;
-    }
-
-    const tags = parseAiResponse(content);
+    const tags = await tagImageBase64(openai, base64, mime);
     if (!tags) {
-      await failJob(jobId, 'Invalid JSON');
+      await failJob(jobId, 'Empty or invalid AI response');
       await prisma.assetAI.upsert({
         where: { asset_id: asset.id },
-        create: { asset_id: asset.id, error: 'Invalid JSON' },
-        update: { error: 'Invalid JSON' },
+        create: { asset_id: asset.id, error: 'Empty or invalid AI response' },
+        update: { error: 'Empty or invalid AI response' },
       });
       await prisma.asset.update({
         where: { id: asset.id },

@@ -17,3 +17,4 @@ rclone.conf
 *.tsbuildinfo
 *.sqlite
 prisma/*.sqlite
+eval/dataset/
